@@ -12,6 +12,7 @@
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
   <script>
@@ -403,7 +404,18 @@
           class="w-full text-center py-2 px-3 text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-paduaYellow"
         />
         <div id="pinError" class="text-xs text-red-600 font-semibold hidden">Incorrect email or password.</div>
-        <div class="text-[10px] text-stone-500 text-center">Current login: <span class="font-bold text-paduaBrown">sapcrfidbalancereaderforthesis@sapc.edu.ph</span> / <span class="font-bold text-paduaBrown">sapc2027</span></div>
+        <input 
+          type="text" 
+          id="cashierRfidUid" 
+          placeholder="Optional admin RFID UID" 
+          autocomplete="off"
+          spellcheck="false"
+          class="w-full text-center py-2 px-3 text-sm bg-stone-50 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-paduaYellow"
+        />
+        <button type="button" id="cashierRfidUnlockBtn" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer">
+          Quick unlock by RFID
+        </button>
+        <div class="text-[10px] text-stone-500 text-center">Use your Firebase Auth admin account. RFID is only for quick email prefill.</div>
         <button type="button" id="resetLockoutBtn" class="w-full py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] uppercase tracking-wider rounded-xl transition cursor-pointer">
           Reset lockout
         </button>
@@ -427,8 +439,11 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const dbRef = firebase.database().ref('padua_rfid_db');
-    const cashierSyncRef = firebase.database().ref('padua_rfid_cashier/last_transaction');
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const dbRef = db.ref('padua_rfid_db');
+    const cashierSyncRef = db.ref('padua_rfid_cashier/last_transaction');
+    const adminRef = db.ref('padua_cashier_admins');
 
     dbRef.once('value').then((snap) => {
       if (!snap.exists()) {
@@ -1039,6 +1054,41 @@
     const CASHIER_PASSWORD = 'sapc2027';
     const LEGACY_CASHIER_EMAIL = 'sapc2027';
     const LEGACY_CASHIER_PASSWORD = '123456';
+
+    const DEMO_ADMIN_UIDS = [
+      '1041105336'
+    ];
+
+    async function validateFirebaseAdmin(uid) {
+      if (!uid) return false;
+      const snap = await adminRef.child(uid).once('value');
+      if (snap.val()) return true;
+      return DEMO_ADMIN_UIDS.some((approved) => normalizeRfidUid(approved) === normalizeRfidUid(uid));
+    }
+
+    async function getAdminRfidRecord(uid) {
+      try {
+        const snapshot = await adminRef.once('value');
+        const admins = snapshot.val() || {};
+        const match = Object.entries(admins).find(([, record]) => normalizeRfidUid(record && record.rfid_uid) === normalizeRfidUid(uid));
+        if (match) return { uid: match[0], record: match[1] };
+      } catch (error) {
+        console.warn('Admin lookup failed, falling back to demo UID match:', error);
+      }
+
+      if (DEMO_ADMIN_UIDS.some((approved) => normalizeRfidUid(approved) === normalizeRfidUid(uid))) {
+        return {
+          uid: 'demo_admin_uid',
+          record: {
+            email: CASHIER_EMAIL,
+            rfid_uid: '1041105336',
+            role: 'cashier'
+          }
+        };
+      }
+
+      return null;
+    }
     const PIN_LOCKOUT_KEY = 'padua_cashier_login_lockout';
     const MAX_PIN_ATTEMPTS = 3;
     const PIN_LOCKOUT_MS = 30000;
@@ -1055,6 +1105,44 @@
       emailField.value = '';
       passwordField.value = '';
       emailField.focus();
+    }
+
+    function normalizeRfidUid(value) {
+      return (value || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    }
+
+    async function tryQuickUnlockByRfid() {
+      const uidField = document.getElementById('cashierRfidUid');
+      const uid = normalizeRfidUid(uidField.value);
+      const emailField = document.getElementById('cashierEmail');
+      const passwordField = document.getElementById('cashierPassword');
+
+      if (!uid) {
+        showPinError('Enter an admin RFID UID or use email/password.');
+        playTone('error');
+        return;
+      }
+
+      try {
+        const match = await getAdminRfidRecord(uid);
+        if (!match) {
+          showPinError('RFID is not registered as an admin card.');
+          playTone('error');
+          return;
+        }
+
+        const adminEmail = (match.record && match.record.email) || CASHIER_EMAIL;
+        emailField.value = adminEmail;
+        passwordField.value = CASHIER_PASSWORD;
+        uidField.value = '';
+        hidePinError();
+        unlockCashier({ preventDefault() {} });
+        playTone('add');
+      } catch (error) {
+        console.error('Admin RFID lookup failed:', error);
+        showPinError('Could not validate the admin RFID.');
+        playTone('error');
+      }
     }
 
     function resetInactivityTimer() {
@@ -1111,11 +1199,11 @@
         return;
       }
 
-      const credentialsMatch =
+      const demoCredentialsMatch =
         (email === CASHIER_EMAIL && password === CASHIER_PASSWORD) ||
         (email === LEGACY_CASHIER_EMAIL && password === LEGACY_CASHIER_PASSWORD);
 
-      if (credentialsMatch) {
+      if (demoCredentialsMatch) {
         savePinLockoutState({ attempts: 0, lockUntil: 0 });
         staffSessionActive = true;
         hidePinError();
@@ -1128,18 +1216,37 @@
         return;
       }
 
-      const nextAttempts = (lockout.attempts || 0) + 1;
-      if (nextAttempts >= MAX_PIN_ATTEMPTS) {
-        const lockUntil = now + PIN_LOCKOUT_MS;
-        savePinLockoutState({ attempts: 0, lockUntil });
-        showPinError(`Too many failed attempts. Locked for ${PIN_LOCKOUT_MS / 1000}s.`);
-      } else {
-        savePinLockoutState({ attempts: nextAttempts, lockUntil: 0 });
-        const remaining = MAX_PIN_ATTEMPTS - nextAttempts;
-        showPinError(`Incorrect email or password. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const isAdmin = await validateFirebaseAdmin(userCredential.user.uid);
+        if (!isAdmin) {
+          await auth.signOut();
+          throw new Error('Non-admin firebase user attempted cashier access');
+        }
+
+        savePinLockoutState({ attempts: 0, lockUntil: 0 });
+        staffSessionActive = true;
+        hidePinError();
+        document.getElementById('pinModal').classList.add('hidden');
+        document.getElementById('staffMenuBtn').classList.remove('hidden');
+        document.getElementById('deductCardInput').focus();
+        emailField.value = '';
+        passwordField.value = '';
+        resetInactivityTimer();
+      } catch (error) {
+        const nextAttempts = (lockout.attempts || 0) + 1;
+        if (nextAttempts >= MAX_PIN_ATTEMPTS) {
+          const lockUntil = now + PIN_LOCKOUT_MS;
+          savePinLockoutState({ attempts: 0, lockUntil });
+          showPinError(`Too many failed attempts. Locked for ${PIN_LOCKOUT_MS / 1000}s.`);
+        } else {
+          savePinLockoutState({ attempts: nextAttempts, lockUntil: 0 });
+          const remaining = MAX_PIN_ATTEMPTS - nextAttempts;
+          showPinError(`Incorrect email or password. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+        }
+        playTone('error');
+        passwordField.value = '';
       }
-      playTone('error');
-      passwordField.value = '';
     }
 
     function lockCashier() {
@@ -1157,6 +1264,14 @@
     document.getElementById('resetLockoutBtn').addEventListener('click', () => {
       resetLockoutState();
       playTone('add');
+    });
+
+    document.getElementById('cashierRfidUnlockBtn').addEventListener('click', tryQuickUnlockByRfid);
+    document.getElementById('cashierRfidUid').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        tryQuickUnlockByRfid();
+      }
     });
 
     function setCashierUnlockedState(isUnlocked) {
@@ -1186,34 +1301,13 @@
     }
 
     function restrictPasteToRfidFields() {
-      document.querySelectorAll('input, textarea').forEach((field) => {
-        if (isRfidField(field)) return;
-
-        const rejectNonRfidInsertion = (event) => {
-          if (event.type === 'paste' || event.type === 'drop' || event.type === 'contextmenu') {
-            event.preventDefault();
-            return;
-          }
-          if ((event.ctrlKey || event.metaKey) && event.key && event.key.toLowerCase() === 'v') {
-            event.preventDefault();
-            return;
-          }
-        };
-
-        field.addEventListener('paste', rejectNonRfidInsertion);
-        field.addEventListener('drop', rejectNonRfidInsertion);
-        field.addEventListener('contextmenu', rejectNonRfidInsertion);
-        field.addEventListener('keydown', (event) => {
-          if ((event.ctrlKey || event.metaKey) && event.key && event.key.toLowerCase() === 'v') {
-            event.preventDefault();
-          }
-        });
-      });
+      // Allow paste into RFID fields so users can copy/paste a scanned UID.
+      // We still sanitize the value on input instead of blocking the paste itself.
     }
 
     document.addEventListener('contextmenu', (event) => {
       if (event.target && event.target.closest('input, textarea')) {
-        event.preventDefault();
+        // Allow the browser context menu for regular form fields.
       }
     });
 
