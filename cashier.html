@@ -688,7 +688,6 @@
     let cartItems = []; 
     let addValue = 50.00;
 
-    // PENDING CARD INSPECTION STATE
     let pendingCardUid = null;
     let pendingCardData = null;
 
@@ -920,7 +919,6 @@
       document.getElementById('receiptModal').classList.add('hidden');
     }
 
-    // STEP 1: SCAN CARD AND DISPLAY BALANCE PREVIEW
     async function scanCardForDeduct(uid) {
       uid = normalizeUid(uid);
       const feedback = document.getElementById('deductFeedback');
@@ -991,7 +989,6 @@
       document.getElementById('deductCardInput').focus();
     }
 
-    // STEP 2: CONFIRM PURCHASE AND DEDUCT FROM FIREBASE
     async function confirmDeductTransaction() {
       if (!pendingCardUid || !pendingCardData) return;
 
@@ -1090,7 +1087,7 @@
     const CASHIER_PASSWORD = 'sapc2027';
     const LEGACY_CASHIER_EMAIL = 'sapc2027';
     const LEGACY_CASHIER_PASSWORD = '123456';
-    const DEMO_ADMIN_UIDS = ['1041105336'];
+    const DEMO_ADMIN_UIDS = ['1041105336', '1041109504'];
 
     async function validateFirebaseAdmin(uid) {
       if (!uid) return false;
@@ -1114,7 +1111,7 @@
           uid: 'demo_admin_uid',
           record: {
             email: CASHIER_EMAIL,
-            rfid_uid: '1041105336',
+            rfid_uid: uid,
             role: 'cashier'
           }
         };
