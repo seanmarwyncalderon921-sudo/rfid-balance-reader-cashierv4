@@ -1100,6 +1100,7 @@
       try {
         const snapshot = await adminRef.once('value');
         const admins = snapshot.val() || {};
+        // Match against child nodes where rfid_uid matches
         const match = Object.entries(admins).find(([, record]) => normalizeUid(record && record.rfid_uid) === normalizeUid(uid));
         if (match) return { uid: match[0], record: match[1] };
       } catch (error) {
@@ -1158,7 +1159,7 @@
 
         const adminEmail = (match.record && match.record.email) || CASHIER_EMAIL;
         emailField.value = adminEmail;
-        passwordField.value = CASHIER_PASSWORD;
+        passwordField.value = (match.record && match.record.password) || CASHIER_PASSWORD;
         uidField.value = '';
         hidePinError();
         unlockCashier({ preventDefault() {} });
