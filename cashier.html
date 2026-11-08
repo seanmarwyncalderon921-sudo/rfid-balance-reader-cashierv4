@@ -75,6 +75,7 @@
     #addDisplay,
     #balanceAmount,
     #actualBalance,
+    #previewBalanceAmount,
     #receiptContent,
     .font-mono,
     input[type="number"],
@@ -168,20 +169,31 @@
       <div class="bg-stone-50 rounded-2xl p-3 border border-stone-200">
         <div class="flex items-center justify-between mb-2">
           <span class="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold">Menu Catalog</span>
-          <span class="text-[10px] font-bold text-paduaBrown">Select item</span>
+          <span class="text-[10px] font-bold text-paduaBrown">Select and add items</span>
         </div>
-        <div class="relative">
-          <input
-            id="productCatalogInput"
-            list="productCatalogList"
-            value=""
-            class="w-full appearance-none rounded-xl border border-stone-300 bg-white pr-9 pl-3 py-2 text-[11px] font-mono text-stone-800 focus:outline-none focus:ring-2 focus:ring-paduaYellow"
-            placeholder="Input item name"
-            autocomplete="off"
-          />
-          <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-stone-500">
-            <i class="ph-bold ph-caret-down text-sm"></i>
+        <div class="flex gap-2">
+          <div class="relative flex-1">
+            <input
+              id="productCatalogInput"
+              list="productCatalogList"
+              value=""
+              class="w-full appearance-none rounded-xl border border-stone-300 bg-white pr-9 pl-3 py-2 text-[11px] font-mono text-stone-800 focus:outline-none focus:ring-2 focus:ring-paduaYellow"
+              placeholder="Input item name"
+              autocomplete="off"
+            />
+            <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-stone-500">
+              <i class="ph-bold ph-caret-down text-sm"></i>
+            </div>
           </div>
+          <!-- ADD ITEM TO CART BUTTON -->
+          <button 
+            type="button" 
+            onclick="addSelectedItemToCart()"
+            class="px-3 py-2 bg-paduaBrown hover:bg-paduaBrownDark text-paduaYellow font-bold rounded-xl text-xs flex items-center gap-1 transition cursor-pointer shadow-sm"
+            title="Add item to cart"
+          >
+            <i class="ph-bold ph-plus text-sm"></i> Add
+          </button>
         </div>
         <datalist id="productCatalogList">
           <option value="Siomai - ₱5">Siomai - ₱5</option>
@@ -205,31 +217,26 @@
         </datalist>
       </div>
 
-      <div class="bg-stone-50 rounded-2xl p-3 border border-stone-200 text-center">
-        <div class="flex items-center justify-between text-xs text-stone-500 px-1 mb-2 gap-3">
-          <span id="productLabel" class="inline-flex max-w-[58%] items-center rounded-xl border border-blue-200 bg-blue-100 px-3 py-2 text-left text-[13px] font-bold text-blue-800 shadow-sm truncate">Item: None</span>
-          <div class="qty-box ml-auto flex min-w-[150px] items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-2 py-1.5 shadow-sm">
-            <span class="text-[10px] font-semibold tracking-wide text-stone-600 uppercase">Qty</span>
-            <div class="flex items-center gap-1.5">
-              <button type="button" data-qty-step="-1" data-qty-target="customPrice" class="h-8 w-8 rounded-lg border border-stone-300 bg-stone-100 text-lg font-bold text-stone-700 hover:bg-stone-200 active:scale-95 transition cursor-pointer">−</button>
-              <input 
-                type="number" 
-                id="customPrice" 
-                placeholder="1" 
-                min="1"
-                step="1"
-                class="w-12 sm:w-14 appearance-none border-0 bg-transparent text-center text-[22px] font-bold font-mono text-stone-800 focus:outline-none"
-                oninput="handleCustomPrice(this.value)"
-              />
-              <button type="button" data-qty-step="1" data-qty-target="customPrice" class="h-8 w-8 rounded-lg border border-stone-300 bg-stone-100 text-lg font-bold text-stone-700 hover:bg-stone-200 active:scale-95 transition cursor-pointer">+</button>
-            </div>
-          </div>
+      <!-- CART ITEMS LIST CONTAINER -->
+      <div class="bg-stone-50 rounded-2xl p-3 border border-stone-200">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold">Current Cart Items</span>
+          <span id="cartCountLabel" class="text-[10px] font-bold text-blue-700">0 items</span>
         </div>
+        <div id="cartItemsContainer" class="max-h-36 overflow-y-auto space-y-1.5 divide-y divide-stone-100 text-xs">
+          <div class="text-center text-stone-400 py-2 italic text-[11px]">No items added yet. Click 'Add' above.</div>
+        </div>
+      </div>
+
+      <!-- TOTAL DISPLAY BOX -->
+      <div class="bg-stone-50 rounded-2xl p-3 border border-stone-200 text-center">
+        <div class="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-bold mb-1">Total Amount Due</div>
         <div class="text-3xl font-bold text-paduaBrown font-mono">
           <span class="peso-sign">₱</span><span id="deductDisplay">0.00</span>
         </div>
       </div>
 
+      <!-- RFID TAP INPUT BOX -->
       <div id="deductBox" class="border-2 border-paduaYellow bg-amber-50/40 rounded-2xl p-4 text-center transition">
         <div class="w-10 h-10 rounded-full bg-paduaBrown text-paduaYellow mx-auto flex items-center justify-center text-lg mb-2 shadow-xs">
           <i class="ph-bold ph-contactless-payment"></i>
@@ -238,12 +245,47 @@
           type="text" 
           id="deductCardInput" 
           data-rfid-field="true"
-          placeholder="Tap RFID card to deduct..." 
+          placeholder="Tap RFID card to inspect balance..." 
           class="w-full text-center py-2 px-3 text-xs font-mono font-bold rounded-xl border border-amber-300 focus:outline-none focus:ring-2 focus:ring-paduaYellow bg-white text-stone-800"
           autocomplete="off"
         />
         <div id="deductFeedback" class="mt-2 text-xs font-medium py-1.5 px-3 rounded-lg hidden"></div>
       </div>
+
+      <!-- SCANNED CARD BALANCE PREVIEW & CONFIRMATION BOX -->
+      <div id="cardPreviewContainer" class="hidden bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between border-b border-blue-200 pb-2">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-blue-600 font-bold">Scanned Cardholder</div>
+            <div id="previewCardName" class="text-sm font-black text-stone-800">--</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] uppercase tracking-wider text-blue-600 font-bold">Current Balance</div>
+            <div class="text-base font-black font-mono text-blue-900"><span class="peso-sign">₱</span><span id="previewBalanceAmount">0.00</span></div>
+          </div>
+        </div>
+
+        <div id="balanceCheckStatus" class="text-xs font-semibold px-2 py-1 rounded-lg text-center"></div>
+
+        <div class="flex gap-2">
+          <button 
+            type="button" 
+            onclick="cancelCardPreview()"
+            class="flex-1 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-xs rounded-xl transition cursor-pointer"
+          >
+            Cancel / Clear
+          </button>
+          <button 
+            type="button" 
+            id="confirmDeductBtn"
+            onclick="confirmDeductTransaction()"
+            class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm"
+          >
+            Confirm Purchase
+          </button>
+        </div>
+      </div>
+
     </div>
 
     <!-- ================= ADD BALANCE SECTION ================= -->
@@ -531,13 +573,14 @@
       feedback.className = 'text-[11px] font-bold rounded-lg px-2 py-1.5 block ' + (type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700');
     }
 
-    async function pushCashierTransaction(uid, action, amount = 0) {
+    async function pushCashierTransaction(uid, action, amount = 0, itemSummary = '') {
       if (!uid) return;
 
       const payload = {
         uid: normalizeUid(uid),
         action,
         amount: Number(amount || 0),
+        itemSummary,
         source: 'cashier',
         timestamp: Date.now()
       };
@@ -636,26 +679,18 @@
       if (currentMode === 'deduct') {
         secDeduct.classList.remove('hidden');
       } else {
-        secAdd.classList.remove('hidden');
+        secAdd.classList.add('hidden');
       }
       if (staffSessionActive) resetInactivityTimer();
     }
 
     let currentMode = 'deduct';
-    let deductPrice = 0.00;
+    let cartItems = []; 
     let addValue = 50.00;
-    let currentProductName = 'None';
-    let unitPrice = 0.00;
-    let quantity = 1;
 
-    function refreshDeductTotal() {
-      const q = Math.max(1, Math.floor(Number(document.getElementById('customPrice').value || 1)) || 1);
-      quantity = q;
-      deductPrice = unitPrice * quantity;
-      document.getElementById('customPrice').value = String(quantity);
-      const hasItemSelected = !!document.getElementById('productCatalogInput').value.trim();
-      document.getElementById('deductDisplay').textContent = hasItemSelected ? deductPrice.toFixed(2) : '0.00';
-    }
+    // PENDING CARD INSPECTION STATE
+    let pendingCardUid = null;
+    let pendingCardData = null;
 
     function parseCatalogValue(rawValue) {
       const value = (rawValue || '').trim();
@@ -694,7 +729,7 @@
         { aliases: ['meal 60', 'meal - 60', 'meal 60.00'], name: 'Meal', price: 60 },
         { aliases: ['meal 70', 'meal - 70', 'meal 70.00'], name: 'Meal', price: 70 },
         { aliases: ['bread rolls'], name: 'Bread Rolls', price: 30 },
-        { aliases: ['nissan cup noodles', 'nissan cup noodles', 'cup noodles'], name: 'Nissan Cup Noodles', price: 35 }
+        { aliases: ['nissan cup noodles', 'cup noodles'], name: 'Nissan Cup Noodles', price: 35 }
       ];
 
       const fallback = cleaned.toLowerCase();
@@ -716,57 +751,103 @@
     function canonicalizeCatalogName(name) {
       const normalized = (name || '').trim();
       if (!normalized) return 'Item';
-
-      let fixed = normalized
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
-        .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      fixed = fixed
-        .replace(/\bCu\s*Noodles\b/gi, 'Cup Noodles')
-        .replace(/\bCup\s*Noodles\b/gi, 'Cup Noodles')
-        .replace(/\bNissan\s*Cu\s*Noodles\b/gi, 'Nissan Cup Noodles')
-        .replace(/\bNissan\s*Cup\s*Noodles\b/gi, 'Nissan Cup Noodles')
-        .replace(/\bIce\s*Cream\b/gi, 'Ice Cream')
-        .replace(/\bBread\s*Rolls\b/gi, 'Bread Rolls')
-        .replace(/\bCoffee\b/gi, 'Coffee')
-        .replace(/\bMeal\b/gi, 'Meal')
-        .replace(/\bChips\b/gi, 'Chips')
-        .replace(/\bBiscuit\b/gi, 'Biscuit')
-        .replace(/\bSiomai\b/gi, 'Siomai');
-
+      let fixed = normalized.replace(/\s+/g, ' ').trim();
       return fixed.replace(/\b\w/g, (char) => char.toUpperCase());
     }
 
-    function applyCatalogSelection() {
+    function addSelectedItemToCart() {
       const field = document.getElementById('productCatalogInput');
       if (!field) return;
 
       const rawValue = (field.value || '').trim();
-      const info = parseCatalogValue(rawValue || '');
-      const name = rawValue ? (info.name || 'Item') : 'None';
-      const selectedPrice = rawValue ? Number(info.price ?? 0) : 0;
+      if (!rawValue) return;
 
-      currentProductName = rawValue ? name : 'None';
-      unitPrice = !isNaN(selectedPrice) ? selectedPrice : 0;
-      quantity = Math.max(1, Math.floor(Number(document.getElementById('customPrice').value || 1)) || 1);
-      document.getElementById('productLabel').textContent = rawValue ? 'Item: ' + name : 'Item: None';
-      document.getElementById('customPrice').value = String(quantity);
-      deductPrice = unitPrice * quantity;
-      document.getElementById('deductDisplay').textContent = rawValue ? deductPrice.toFixed(2) : '0.00';
+      const info = parseCatalogValue(rawValue);
+      const name = info.name || 'Item';
+      const price = Number(info.price || 0);
+
+      if (price <= 0) {
+        alert('Please specify a valid price for this item.');
+        return;
+      }
+
+      const existingItem = cartItems.find(item => item.name === name && item.price === price);
+      if (existingItem) {
+        existingItem.qty += 1;
+      } else {
+        cartItems.push({ name, price, qty: 1 });
+      }
+
+      field.value = '';
+      renderCart();
+      if (pendingCardUid) evaluateCardPreview(); 
     }
 
-    function resetDeductSelection() {
+    function updateCartItemQty(index, delta) {
+      if (!cartItems[index]) return;
+      cartItems[index].qty += delta;
+      if (cartItems[index].qty <= 0) {
+        cartItems.splice(index, 1);
+      }
+      renderCart();
+      if (pendingCardUid) evaluateCardPreview();
+    }
+
+    function removeCartItem(index) {
+      cartItems.splice(index, 1);
+      renderCart();
+      if (pendingCardUid) evaluateCardPreview();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItemsContainer');
+      const countLabel = document.getElementById('cartCountLabel');
+      const deductDisplay = document.getElementById('deductDisplay');
+
+      let totalAmount = 0;
+      let totalCount = 0;
+
+      if (!cartItems.length) {
+        container.innerHTML = '<div class="text-center text-stone-400 py-2 italic text-[11px]">No items added yet. Click \'Add\' above.</div>';
+        countLabel.textContent = '0 items';
+        deductDisplay.textContent = '0.00';
+        return;
+      }
+
+      container.innerHTML = cartItems.map((item, index) => {
+        const itemTotal = item.price * item.qty;
+        totalAmount += itemTotal;
+        totalCount += item.qty;
+
+        return `
+          <div class="flex items-center justify-between py-2 px-1 text-stone-800">
+            <div class="truncate max-w-[140px]">
+              <div class="font-bold truncate">${item.name}</div>
+              <div class="text-[10px] text-stone-500">₱${item.price.toFixed(2)} each</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center border border-stone-300 rounded-lg bg-white overflow-hidden">
+                <button type="button" onclick="updateCartItemQty(${index}, -1)" class="px-1.5 py-0.5 bg-stone-100 font-bold hover:bg-stone-200">−</button>
+                <span class="px-2 font-mono font-bold text-xs">${item.qty}</span>
+                <button type="button" onclick="updateCartItemQty(${index}, 1)" class="px-1.5 py-0.5 bg-stone-100 font-bold hover:bg-stone-200">+</button>
+              </div>
+              <span class="font-mono font-bold text-paduaBrown w-14 text-right">₱${itemTotal.toFixed(2)}</span>
+              <button type="button" onclick="removeCartItem(${index})" class="text-red-500 hover:text-red-700 ml-1"><i class="ph-bold ph-trash"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      countLabel.textContent = `${totalCount} item${totalCount === 1 ? '' : 's'}`;
+      deductDisplay.textContent = totalAmount.toFixed(2);
+    }
+
+    function resetCart() {
+      cartItems = [];
       const field = document.getElementById('productCatalogInput');
       if (field) field.value = '';
-      currentProductName = 'None';
-      unitPrice = 0;
-      quantity = 1;
-      deductPrice = 0;
-      document.getElementById('productLabel').textContent = 'Item: None';
-      document.getElementById('deductDisplay').textContent = '0.00';
-      document.getElementById('customPrice').value = '1';
+      renderCart();
+      cancelCardPreview();
     }
 
     function toggleTheme() {
@@ -805,92 +886,15 @@
       }
     }
 
-    function handleCustomPrice(val) {
+    function handleCustomAdd(val) {
       const num = parseFloat(val);
       if (!isNaN(num) && num > 0) {
-        quantity = Math.max(1, Math.floor(num));
-        deductPrice = unitPrice * quantity;
-        document.getElementById('customPrice').value = String(quantity);
-        const hasItemSelected = !!document.getElementById('productCatalogInput').value.trim();
-        document.getElementById('deductDisplay').textContent = hasItemSelected ? deductPrice.toFixed(2) : '0.00';
+        addValue = num;
+        document.getElementById('addDisplay').textContent = num.toFixed(2);
       }
     }
 
-    function adjustNumericInput(inputId, delta) {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-
-      const current = Number.parseInt(input.value || '1', 10);
-      const safeCurrent = Number.isFinite(current) && current > 0 ? current : 1;
-      const nextValue = Math.max(1, safeCurrent + delta);
-      input.value = String(nextValue);
-
-      if (inputId === 'customPrice') {
-        handleCustomPrice(String(nextValue));
-      } else {
-        handleCustomAdd(String(nextValue));
-      }
-    }
-
-    function handleQuantityStep(inputId) {
-      const input = document.getElementById(inputId);
-      if (!input) return;
-
-      const applyStep = (direction) => {
-        const current = Number.parseInt(input.value || '1', 10);
-        const safeCurrent = Number.isFinite(current) && current > 0 ? current : 1;
-        const nextValue = direction === 'up' ? safeCurrent + 1 : Math.max(1, safeCurrent - 1);
-
-        input.value = String(nextValue);
-        if (inputId === 'customPrice') {
-          handleCustomPrice(String(nextValue));
-        } else {
-          handleCustomAdd(String(nextValue));
-        }
-      };
-
-      input.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          applyStep('up');
-        } else if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          applyStep('down');
-        }
-      });
-
-      input.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        applyStep(event.deltaY < 0 ? 'up' : 'down');
-      }, { passive: false });
-    }
-
-    function applyDetectedUid(uid) {
-      const normalized = normalizeUid(uid);
-      if (!normalized) return;
-
-      const targetFields = [
-        document.getElementById('registerUid'),
-        document.getElementById('renameUid'),
-        document.getElementById('removeUid'),
-        document.getElementById('deductCardInput'),
-        document.getElementById('addCardInput')
-      ];
-
-      const active = document.activeElement;
-      const sameInput = targetFields.find(field => field && field === active);
-
-      if (sameInput) {
-        sameInput.value = normalized;
-        return;
-      }
-
-      targetFields.forEach(field => {
-        if (field) field.value = normalized;
-      });
-    }
-
-    function buildReceipt(type, uid, name, amount, itemName) {
+    function buildReceipt(type, uid, name, amount, itemSummary) {
       const now = new Date();
       const lines = [
         'SAN ANTONIO DE PADUA COLLEGE',
@@ -900,8 +904,10 @@
         'Type: ' + (type === 'deduct' ? 'Canteen Deduction' : 'Balance Added'),
         'Cardholder: ' + name,
         'UID: ' + uid,
-        'Item: ' + (itemName || 'N/A'),
-        'Amount: ₱' + Number(amount).toFixed(2),
+        'Items:',
+        itemSummary,
+        '---------------------',
+        'Total Amount: ₱' + Number(amount).toFixed(2),
         '---------------------',
         'Thank you!'
       ];
@@ -914,88 +920,120 @@
       document.getElementById('receiptModal').classList.add('hidden');
     }
 
-    async function deductBalance(uid) {
+    // STEP 1: SCAN CARD AND DISPLAY BALANCE PREVIEW
+    async function scanCardForDeduct(uid) {
       uid = normalizeUid(uid);
+      const feedback = document.getElementById('deductFeedback');
+
       if (!uid) {
-        const feedback = document.getElementById('deductFeedback');
         feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-100 text-red-700 block';
-        feedback.textContent = 'RFID card is required before processing the transaction.';
+        feedback.textContent = 'RFID card is required.';
         return;
       }
 
-      const selectedItem = (document.getElementById('productCatalogInput').value || '').trim();
-      if (!selectedItem) {
-        const feedback = document.getElementById('deductFeedback');
+      if (!cartItems.length) {
         feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-100 text-red-700 block';
-        feedback.textContent = 'Select an item before processing the deduction.';
+        feedback.textContent = 'Cart is empty. Add items before scanning card.';
         return;
       }
-      applyDetectedUid(uid);
 
+      feedback.classList.add('hidden');
       const cardRef = firebase.database().ref('padua_rfid_db/' + uid);
       const snap = await cardRef.once('value');
-      let card = snap.val() || { uid: uid, name: 'Cardholder (' + uid + ')', balance: 20.00 };
+      
+      if (!snap.exists()) {
+        playTone('error');
+        feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-100 text-red-700 block';
+        feedback.textContent = `Card UID ${uid} is not registered in the system.`;
+        return;
+      }
 
-      const feedback = document.getElementById('deductFeedback');
+      pendingCardUid = uid;
+      pendingCardData = snap.val();
+
+      document.getElementById('deductCardInput').value = '';
+      evaluateCardPreview();
+    }
+
+    function evaluateCardPreview() {
+      if (!pendingCardData) return;
+
+      const totalDeduct = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const currentBal = Number(pendingCardData.balance || 0);
+
+      document.getElementById('previewCardName').textContent = pendingCardData.name || 'Cardholder';
+      document.getElementById('previewBalanceAmount').textContent = currentBal.toFixed(2);
+
+      const statusEl = document.getElementById('balanceCheckStatus');
+      const confirmBtn = document.getElementById('confirmDeductBtn');
+
+      if (currentBal < totalDeduct) {
+        statusEl.className = 'text-xs font-bold px-2 py-1.5 rounded-lg text-center bg-red-100 text-red-700';
+        statusEl.textContent = `Insufficient Funds! Short by ₱${(totalDeduct - currentBal).toFixed(2)}`;
+        confirmBtn.disabled = true;
+        confirmBtn.className = 'flex-1 py-2 bg-stone-300 text-stone-500 font-bold text-xs uppercase tracking-wider rounded-xl cursor-not-allowed';
+      } else {
+        statusEl.className = 'text-xs font-bold px-2 py-1.5 rounded-lg text-center bg-emerald-100 text-emerald-800';
+        statusEl.textContent = `Sufficient Funds. Balance after purchase: ₱${(currentBal - totalDeduct).toFixed(2)}`;
+        confirmBtn.disabled = false;
+        confirmBtn.className = 'flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm';
+      }
+
+      document.getElementById('cardPreviewContainer').classList.remove('hidden');
+      document.getElementById('deductCardInput').placeholder = 'Card scanned. Verify & confirm below...';
+    }
+
+    function cancelCardPreview() {
+      pendingCardUid = null;
+      pendingCardData = null;
+      document.getElementById('cardPreviewContainer').classList.add('hidden');
+      document.getElementById('deductCardInput').placeholder = 'Tap RFID card to inspect balance...';
+      document.getElementById('deductCardInput').focus();
+    }
+
+    // STEP 2: CONFIRM PURCHASE AND DEDUCT FROM FIREBASE
+    async function confirmDeductTransaction() {
+      if (!pendingCardUid || !pendingCardData) return;
+
+      const totalDeduct = cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const cardRef = firebase.database().ref('padua_rfid_db/' + pendingCardUid);
+
+      const snap = await cardRef.once('value');
+      let liveCard = snap.val();
+
+      if (!liveCard || liveCard.balance < totalDeduct) {
+        playTone('error');
+        alert('Transaction failed: Balance changed or insufficient funds.');
+        cancelCardPreview();
+        return;
+      }
+
+      liveCard.balance -= totalDeduct;
+      liveCard.balance = Math.round(liveCard.balance * 100) / 100;
+      await cardRef.set(liveCard);
+
+      const itemSummaryText = cartItems.map(i => `${i.qty}x ${i.name} (₱${(i.price * i.qty).toFixed(2)})`).join(', ');
+      await pushCashierTransaction(pendingCardUid, 'deduct', totalDeduct, itemSummaryText);
+
       const box = document.getElementById('deductBox');
-
       box.classList.remove('boom-effect');
       void box.offsetWidth;
       box.classList.add('boom-effect');
 
-      if (card.balance < deductPrice) {
-        playTone('error');
-        feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-100 text-red-700 block';
-        feedback.textContent = `Insufficient funds. Available balance: ₱${card.balance.toFixed(2)}. Required: ₱${deductPrice.toFixed(2)}.`;
-        return;
-      }
-
-      card.balance -= deductPrice;
-      card.balance = Math.round(card.balance * 100) / 100;
-      await cardRef.set(card);
-
-      await pushCashierTransaction(uid, 'deduct', deductPrice);
-
       playTone('boom');
-      feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-emerald-100 text-emerald-800 block';
-      feedback.textContent = `Transaction completed. Deducted ₱${deductPrice.toFixed(2)} from ${card.name}. Remaining balance: ₱${card.balance.toFixed(2)}.`;
-      buildReceipt('deduct', uid, card.name, deductPrice, currentProductName || 'Item');
-    }
-
-    function setAddValue(val) {
-      addValue = Number(val) || 0;
-      document.getElementById('addDisplay').textContent = addValue.toFixed(2);
-      document.getElementById('customAddInput').value = addValue;
-      document.getElementById('addCardInput').focus();
-    }
-
-    function handleCustomAdd(val) {
-      const num = parseFloat(val);
-      if (!isNaN(num) && num > 0) {
-        addValue = num;
-        document.getElementById('addDisplay').textContent = num.toFixed(2);
-      }
-    }
-
-    function focusNextRfidField() {
-      if (currentMode === 'deduct') {
-        const field = document.getElementById('deductCardInput');
-        if (field) { field.focus(); field.select(); }
-      } else {
-        const field = document.getElementById('addCardInput');
-        if (field) { field.focus(); field.select(); }
-      }
+      buildReceipt('deduct', pendingCardUid, liveCard.name, totalDeduct, itemSummaryText);
+      resetCart();
     }
 
     async function addBalance(uid) {
       uid = normalizeUid(uid);
+      const feedback = document.getElementById('addFeedback');
+
       if (!uid) {
-        const feedback = document.getElementById('addFeedback');
         feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-red-100 text-red-700 block';
         feedback.textContent = 'RFID card is required before adding balance.';
         return;
       }
-      applyDetectedUid(uid);
 
       const cardRef = firebase.database().ref('padua_rfid_db/' + uid);
       const snap = await cardRef.once('value');
@@ -1005,12 +1043,11 @@
       card.balance = Math.round(card.balance * 100) / 100;
       await cardRef.set(card);
 
-      await pushCashierTransaction(uid, 'add', addValue);
+      await pushCashierTransaction(uid, 'add', addValue, 'Balance Top-Up');
 
-      const feedback = document.getElementById('addFeedback');
       playTone('add');
       feedback.className = 'mt-2 text-xs font-semibold py-1.5 px-3 rounded-lg bg-emerald-100 text-emerald-800 block';
-      feedback.textContent = `Transaction completed. Added +₱${addValue.toFixed(2)} to ${card.name}. New balance: ₱${card.balance.toFixed(2)}.`;
+      feedback.textContent = `Added +₱${addValue.toFixed(2)} to ${card.name}. New balance: ₱${card.balance.toFixed(2)}.`;
       buildReceipt('add', uid, card.name, addValue, 'Balance Top-Up');
     }
 
@@ -1038,8 +1075,7 @@
 
     document.getElementById('deductCardInput').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        deductBalance(e.target.value);
-        e.target.value = '';
+        scanCardForDeduct(e.target.value);
       }
     });
 
@@ -1054,29 +1090,26 @@
     const CASHIER_PASSWORD = 'sapc2027';
     const LEGACY_CASHIER_EMAIL = 'sapc2027';
     const LEGACY_CASHIER_PASSWORD = '123456';
-
-    const DEMO_ADMIN_UIDS = [
-      '1041105336'
-    ];
+    const DEMO_ADMIN_UIDS = ['1041105336'];
 
     async function validateFirebaseAdmin(uid) {
       if (!uid) return false;
       const snap = await adminRef.child(uid).once('value');
       if (snap.val()) return true;
-      return DEMO_ADMIN_UIDS.some((approved) => normalizeRfidUid(approved) === normalizeRfidUid(uid));
+      return DEMO_ADMIN_UIDS.some((approved) => normalizeUid(approved) === normalizeUid(uid));
     }
 
     async function getAdminRfidRecord(uid) {
       try {
         const snapshot = await adminRef.once('value');
         const admins = snapshot.val() || {};
-        const match = Object.entries(admins).find(([, record]) => normalizeRfidUid(record && record.rfid_uid) === normalizeRfidUid(uid));
+        const match = Object.entries(admins).find(([, record]) => normalizeUid(record && record.rfid_uid) === normalizeUid(uid));
         if (match) return { uid: match[0], record: match[1] };
       } catch (error) {
-        console.warn('Admin lookup failed, falling back to demo UID match:', error);
+        console.warn('Admin lookup failed:', error);
       }
 
-      if (DEMO_ADMIN_UIDS.some((approved) => normalizeRfidUid(approved) === normalizeRfidUid(uid))) {
+      if (DEMO_ADMIN_UIDS.some((approved) => normalizeUid(approved) === normalizeUid(uid))) {
         return {
           uid: 'demo_admin_uid',
           record: {
@@ -1086,9 +1119,9 @@
           }
         };
       }
-
       return null;
     }
+
     const PIN_LOCKOUT_KEY = 'padua_cashier_login_lockout';
     const MAX_PIN_ATTEMPTS = 3;
     const PIN_LOCKOUT_MS = 30000;
@@ -1099,7 +1132,6 @@
       localStorage.removeItem(PIN_LOCKOUT_KEY);
       const pinError = document.getElementById('pinError');
       pinError.classList.add('hidden');
-      pinError.textContent = 'Incorrect email or password.';
       const emailField = document.getElementById('cashierEmail');
       const passwordField = document.getElementById('cashierPassword');
       emailField.value = '';
@@ -1107,13 +1139,9 @@
       emailField.focus();
     }
 
-    function normalizeRfidUid(value) {
-      return (value || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    }
-
     async function tryQuickUnlockByRfid() {
       const uidField = document.getElementById('cashierRfidUid');
-      const uid = normalizeRfidUid(uidField.value);
+      const uid = normalizeUid(uidField.value);
       const emailField = document.getElementById('cashierEmail');
       const passwordField = document.getElementById('cashierPassword');
 
@@ -1148,19 +1176,13 @@
     function resetInactivityTimer() {
       if (!staffSessionActive) return;
       clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(() => {
-        lockCashier();
-      }, INACTIVITY_TIMEOUT_MS);
+      inactivityTimer = setTimeout(() => { lockCashier(); }, INACTIVITY_TIMEOUT_MS);
     }
 
     function getPinLockoutState() {
       const raw = localStorage.getItem(PIN_LOCKOUT_KEY);
       if (!raw) return { attempts: 0, lockUntil: 0 };
-      try {
-        return JSON.parse(raw);
-      } catch (error) {
-        return { attempts: 0, lockUntil: 0 };
-      }
+      try { return JSON.parse(raw); } catch (e) { return { attempts: 0, lockUntil: 0 }; }
     }
 
     function savePinLockoutState(state) {
@@ -1290,27 +1312,6 @@
       }
     }
 
-    function isRfidField(field) {
-      return !!(field && field.dataset && field.dataset.rfidField === 'true');
-    }
-
-    function isLikelyRfidValue(value) {
-      const digitsOnly = (value || '').replace(/[^A-Z0-9-]/gi, '');
-      if (!digitsOnly) return false;
-      return digitsOnly.length >= 8 && /[0-9]/.test(digitsOnly) && !/\s/.test(value || '');
-    }
-
-    function restrictPasteToRfidFields() {
-      // Allow paste into RFID fields so users can copy/paste a scanned UID.
-      // We still sanitize the value on input instead of blocking the paste itself.
-    }
-
-    document.addEventListener('contextmenu', (event) => {
-      if (event.target && event.target.closest('input, textarea')) {
-        // Allow the browser context menu for regular form fields.
-      }
-    });
-
     ['click', 'keydown', 'mousemove', 'touchstart', 'input'].forEach((eventName) => {
       document.addEventListener(eventName, () => {
         if (staffSessionActive) {
@@ -1328,42 +1329,10 @@
     });
 
     const productCatalogInput = document.getElementById('productCatalogInput');
-    productCatalogInput.addEventListener('input', applyCatalogSelection);
-    productCatalogInput.addEventListener('change', applyCatalogSelection);
     productCatalogInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        applyCatalogSelection();
-        focusNextRfidField();
-      }
-    });
-
-    handleQuantityStep('customPrice');
-    handleQuantityStep('customAddInput');
-
-    document.querySelectorAll('[data-qty-target]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const targetId = button.getAttribute('data-qty-target');
-        const delta = Number(button.getAttribute('data-qty-step') || '0');
-        if (targetId) {
-          adjustNumericInput(targetId, delta);
-        }
-      });
-    });
-
-    restrictPasteToRfidFields();
-
-    document.getElementById('customPrice').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        focusNextRfidField();
-      }
-    });
-
-    document.getElementById('customAddInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        focusNextRfidField();
+        addSelectedItemToCart();
       }
     });
 
@@ -1376,7 +1345,7 @@
     });
 
     window.addEventListener('DOMContentLoaded', () => {
-      resetDeductSelection();
+      resetCart();
       setCashierUnlockedState(false);
       document.getElementById('cashierEmail').focus();
     });
